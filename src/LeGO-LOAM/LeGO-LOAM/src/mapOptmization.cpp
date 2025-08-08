@@ -44,6 +44,8 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 
+
+
 using namespace gtsam;
 
 class mapOptimization{
@@ -220,7 +222,8 @@ private:
     float ctRoll, stRoll, ctPitch, stPitch, ctYaw, stYaw, tInX, tInY, tInZ;
 
 public:
-
+    void savePosesBeforeLC();
+    void savePosesAfterLC();
     
 
     mapOptimization():
@@ -372,6 +375,7 @@ public:
 
         latestFrameID = 0;
     }
+    
 
     void transformAssociateToMap()
     {
@@ -1496,8 +1500,18 @@ public:
             }
 
             aLoopIsClosed = false;
+            
+            std::ofstream out("/home/kang/pathlog/pose_graph_after.txt");
+	    for (int i = 0; i < cloudKeyPoses3D->size(); ++i) {
+		auto &p = cloudKeyPoses3D->points[i];
+		out << p.x << " " << p.y << " " << p.z << std::endl;
+	    }
+	    out.close();
+            
+            
         }
     }
+
 
     void clearCloud(){
         laserCloudCornerFromMap->clear();
@@ -1507,6 +1521,12 @@ public:
     }
 
     void run(){
+    
+    	std::ofstream clearRaw("/home/kang/pathlog/pose_graph_before.txt", std::ios::out);
+    	clearRaw.close();
+
+    	std::ofstream clearAfter("/home/kang/pathlog/pose_graph_after.txt", std::ios::out);
+   	 clearAfter.close();
 
         if (newLaserCloudCornerLast  && std::abs(timeLaserCloudCornerLast  - timeLaserOdometry) < 0.005 &&
             newLaserCloudSurfLast    && std::abs(timeLaserCloudSurfLast    - timeLaserOdometry) < 0.005 &&
@@ -1519,6 +1539,8 @@ public:
             std::lock_guard<std::mutex> lock(mtx);
 
             if (timeLaserOdometry - timeLastProcessing >= mappingProcessInterval) {
+            
+            	savePosesBeforeLC();
 
                 timeLastProcessing = timeLaserOdometry;
 
@@ -1533,6 +1555,8 @@ public:
                 saveKeyFramesAndFactor();
 
                 correctPoses();
+                
+                //savePosesAfterLC();
 
                 publishTF();
 
@@ -1543,6 +1567,17 @@ public:
         }
     }
 };
+
+void mapOptimization::savePosesBeforeLC() {
+    std::ofstream out("/home/kang/pathlog/pose_graph_before.txt");
+    for (int i = 0; i < cloudKeyPoses3D->size(); ++i) {
+        auto &p = cloudKeyPoses3D->points[i];
+        out << p.x << " " << p.y << " " << p.z << std::endl;
+    }
+    out.close();
+}
+
+
 
 
 int main(int argc, char** argv)
